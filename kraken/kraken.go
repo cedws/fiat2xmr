@@ -100,15 +100,6 @@ func (a AddOrderRequest) MarshalText() ([]byte, error) {
 	return []byte(params.Encode()), nil
 }
 
-func (c *Client) AddOrder() (*AddOrderResponse, error) {
-	order := AddOrderRequest{
-		Pair:      "LTCGBP",
-		Type:      "buy",
-		OrderType: "market",
-		Volume:    "1.0",
-		Oflags:    []string{"fciq"},
-		Validate:  true,
-	}
-
+func (c *Client) AddOrder(order AddOrderRequest) (*AddOrderResponse, error) {
 	return request[AddOrderRequest, AddOrderResponse](c, order, "/0/private/AddOrder")
 }
