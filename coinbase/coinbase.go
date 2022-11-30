@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -68,7 +69,6 @@ type TxResponse struct {
 }
 
 func request[T any, U any](c *Client, endpoint string, body T) (*U, error) {
-	url := fmt.Sprintf("%v/%v%v", coinbaseURL, c.account, endpoint)
 	bodyReader, bodyWriter := io.Pipe()
 
 	go func() error {
@@ -78,7 +78,12 @@ func request[T any, U any](c *Client, endpoint string, body T) (*U, error) {
 		return bodyWriter.Close()
 	}()
 
-	req, err := http.NewRequest(http.MethodPost, url, bodyReader)
+	path, err := url.JoinPath(coinbaseURL, c.account, endpoint)
+	if err != nil {
+		panic(err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, path, bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +110,7 @@ func request[T any, U any](c *Client, endpoint string, body T) (*U, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
-		return nil, fmt.Errorf("bad status code %v", http.StatusText(res.StatusCode))
+		return nil, fmt.Errorf("bad status code %v (%v)", res.StatusCode, http.StatusText(res.StatusCode))
 	}
 
 	var decoded struct {
@@ -118,8 +123,8 @@ func request[T any, U any](c *Client, endpoint string, body T) (*U, error) {
 	return &decoded.Data, nil
 }
 
-func NewClient(account, token string) (*Client, error) {
-	return &Client{&http.Client{}, account, token}, nil
+func NewClient(account, token string) Client {
+	return Client{&http.Client{}, account, token}
 }
 
 func (c *Client) SendTransaction(transaction TxRequest) (*TxResponse, error) {

@@ -2,49 +2,29 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 
-	"github.com/cedws/fiat2xmr/coinbase"
+	"github.com/cedws/fiat2xmr/fiat2xmr"
 	"github.com/spf13/cobra"
 )
 
-var (
-	account    string
-	token      string
-	address    string
-	pair       string
-	volumeBase float64
-)
+var opts fiat2xmr.Opts
 
 var rootCmd = &cobra.Command{
 	Use: "fiat2xmr",
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := coinbase.NewClient(account, token)
-		if err != nil {
-			log.Fatal(err)
-		}
-		_, err = client.SendTransaction(coinbase.TxRequest{
-			Type:     "send",
-			To:       "",
-			Amount:   "0.1",
-			Currency: "LTC",
-			Nonce:    "123",
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
+		fiat2xmr.Convert(opts)
 	},
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&account, "account", "a", "", "account number")
-	rootCmd.Flags().StringVarP(&token, "token", "t", "", "account token")
-	rootCmd.Flags().StringVarP(&address, "address", "x", "", "monero wallet address")
-	rootCmd.Flags().StringVar(&pair, "pair", "LTCXMR", "currency pair to use for conversion")
-	rootCmd.Flags().Float64VarP(&volumeBase, "volume-base", "v", 0, "volume to buy using base currency")
+	rootCmd.Flags().StringVar(&opts.CoinbaseToken, "coinbase-token", "", "coinbase account token")
+	rootCmd.Flags().StringVar(&opts.SideShiftToken, "sideshift-token", "", "sideshift account token")
+	rootCmd.Flags().StringVarP(&opts.Address, "address", "x", "", "monero wallet address")
+	rootCmd.Flags().Float64VarP(&opts.VolumeBase, "volume-base", "v", 0, "volume to buy using base currency")
 
-	rootCmd.MarkFlagRequired("account")
+	rootCmd.MarkFlagRequired("coinbase-token")
+	rootCmd.MarkFlagRequired("sideshift-token")
 	rootCmd.MarkFlagRequired("token")
 	rootCmd.MarkFlagRequired("address")
 	rootCmd.MarkFlagRequired("volume-base")
