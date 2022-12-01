@@ -34,7 +34,7 @@ func request[T any, U any](c *Client, method, endpoint string, body T) (*U, erro
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-sideshift-secret", c.token)
+	req.Header.Set("x-sideshift-secret", c.apiSecret)
 
 	res, err := c.client.Do(req)
 	if err != nil {
@@ -84,12 +84,12 @@ const (
 )
 
 type Client struct {
-	client *http.Client
-	token  string
+	client    *http.Client
+	apiSecret string
 }
 
-func NewClient(token string) Client {
-	return Client{&http.Client{}, token}
+func NewClient(apiSecret string) Client {
+	return Client{&http.Client{}, apiSecret}
 }
 
 type WalletAddress string

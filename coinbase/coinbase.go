@@ -171,10 +171,20 @@ func NewClient(apiKey, apiSecret string) Client {
 	return Client{&http.Client{}, apiKey, apiSecret}
 }
 
+func (c *Client) GetAccountByCode(code string) (*Account, error) {
+	path := fmt.Sprintf("/accounts/%v", url.PathEscape(code))
+
+	result, err := request[struct{}, Account](c, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("while getting accounts: %w", err)
+	}
+	return result, nil
+}
+
 func (c *Client) GetAccounts() (*Accounts, error) {
 	result, err := request[struct{}, Accounts](c, http.MethodGet, "/accounts", nil)
 	if err != nil {
-		return nil, fmt.Errorf("coinbase: while getting accounts: %w", err)
+		return nil, fmt.Errorf("while getting accounts: %w", err)
 	}
 	return result, nil
 }
@@ -184,7 +194,7 @@ func (c *Client) SendTransaction(account string, transaction TxRequest) (*TxResp
 
 	result, err := request[TxRequest, TxResponse](c, http.MethodPost, path, &transaction)
 	if err != nil {
-		return nil, fmt.Errorf("coinbase: while sending transaction: %w", err)
+		return nil, fmt.Errorf("while sending transaction: %w", err)
 	}
 	return result, nil
 }

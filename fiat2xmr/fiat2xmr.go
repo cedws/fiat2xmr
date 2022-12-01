@@ -15,19 +15,18 @@ const (
 )
 
 type Opts struct {
-	CoinbaseToken  string
-	SideShiftToken string
-	Address        string
-	VolumeBase     float64
+	CoinbaseKey     string
+	CoinbaseSecret  string
+	SideShiftSecret string
+	Address         string
+	VolumeBase      float64
 }
 
 func Convert(opts Opts) {
-	ssClient := sideshift.NewClient(opts.SideShiftToken)
-	cbClient := coinbase.NewClient("", opts.CoinbaseToken)
-
+	ssClient := sideshift.NewClient(opts.SideShiftSecret)
 	shift, err := ssClient.CreateVariableShift(sideshift.VariableShiftRequest{
 		SettleAddress: sideshift.WalletAddress(opts.Address),
-		RefundAddress: "",
+		RefundAddress: "", // TODO
 		DepositCoin:   baseCurrency,
 		SettleCoin:    quoteCurrency,
 	})
@@ -35,7 +34,13 @@ func Convert(opts Opts) {
 		log.Fatal(err)
 	}
 
-	_, err = cbClient.SendTransaction("", coinbase.TxRequest{
+	cbClient := coinbase.NewClient(opts.CoinbaseKey, opts.CoinbaseSecret)
+	account, err := cbClient.GetAccountByCode(baseCurrency)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = cbClient.SendTransaction(account.ID, coinbase.TxRequest{
 		Type:     "send",
 		To:       shift.DepositAddress,
 		Amount:   fmt.Sprintf("%f", opts.VolumeBase),
