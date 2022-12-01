@@ -18,7 +18,7 @@ func (f fakeTime) Now() time.Time {
 func TestAccessKey(t *testing.T) {
 	t.Parallel()
 
-	expectedToken := "1234"
+	expectedToken := "123"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, expectedToken, r.Header.Get("CB-ACCESS-KEY"))
 		w.Write([]byte("{}"))
@@ -28,14 +28,14 @@ func TestAccessKey(t *testing.T) {
 	coinbaseURL = srv.URL
 
 	client := NewClient("123", expectedToken)
-	_, err := client.SendTransaction(TxRequest{})
+	_, err := client.SendTransaction("", TxRequest{})
 	assert.Nil(t, err)
 }
 
 func TestAccessSign(t *testing.T) {
 	t.Parallel()
 
-	expectedSig := "dcde1e2bed82538306e8f4a3414690f700368da4f2e853323c425cb12c115e86"
+	expectedSig := "bb2ce07c410da073a6b0e89695946ff22ff5f6004016ffbccb28680076911b57"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, expectedSig, r.Header.Get("CB-ACCESS-SIGN"))
 		w.Write([]byte("{}"))
@@ -46,7 +46,7 @@ func TestAccessSign(t *testing.T) {
 	timeNow = fakeTime{}.Now
 
 	client := NewClient("123", "123")
-	_, err := client.SendTransaction(TxRequest{})
+	_, err := client.SendTransaction("", TxRequest{})
 	assert.Nil(t, err)
 }
 
@@ -63,6 +63,6 @@ func TestAccessTimestamp(t *testing.T) {
 	timeNow = fakeTime{}.Now
 
 	client := NewClient("123", "123")
-	_, err := client.SendTransaction(TxRequest{})
+	_, err := client.SendTransaction("", TxRequest{})
 	assert.Nil(t, err)
 }

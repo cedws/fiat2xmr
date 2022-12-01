@@ -35,7 +35,7 @@ func Convert(opts Opts) {
 		log.Fatal(err)
 	}
 
-	_, err = cbClient.SendTransaction(coinbase.TxRequest{
+	_, err = cbClient.SendTransaction("", coinbase.TxRequest{
 		Type:     "send",
 		To:       shift.DepositAddress,
 		Amount:   fmt.Sprintf("%f", opts.VolumeBase),

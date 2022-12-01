@@ -14,14 +14,14 @@ import (
 
 // Overridden in tests.
 var (
-	coinbaseURL = "https://api.coinbase.com/v2/accounts"
+	coinbaseURL = "https://api.coinbase.com/v2"
 	timeNow     = time.Now
 )
 
 type Client struct {
-	client  *http.Client
-	account string
-	token   string
+	client    *http.Client
+	apiKey    string
+	apiSecret string
 }
 
 type TxRequest struct {
@@ -68,38 +68,82 @@ type TxResponse struct {
 	}
 }
 
-func request[T any, U any](c *Client, endpoint string, body T) (*U, error) {
+type Accounts []Account
+
+type Account struct {
+	ID       string
+	Name     string
+	Primary  bool
+	Type     string
+	Currency struct {
+		Code         string
+		Name         string
+		Color        string
+		SortIndex    int
+		Exponent     int
+		Type         string
+		AddressRegex string
+		AssetID      string
+		Slug         string
+	}
+	Balance struct {
+		Amount   string
+		Currency string
+	}
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	Resource         string
+	ResourcePath     string
+	AllowDeposits    bool
+	AllowWithdrawals bool
+	Rewards          struct {
+		Apy          string
+		FormattedApy string
+		Label        string
+	}
+}
+
+func request[T any, U any](c *Client, method, endpoint string, body *T) (*U, error) {
 	bodyReader, bodyWriter := io.Pipe()
 
-	go func() error {
-		if err := json.NewEncoder(bodyWriter).Encode(body); err != nil {
-			return bodyWriter.CloseWithError(err)
-		}
-		return bodyWriter.Close()
-	}()
-
-	path, err := url.JoinPath(coinbaseURL, c.account, endpoint)
+	coinbaseURL, err := url.Parse(coinbaseURL)
+	url := coinbaseURL.JoinPath(endpoint)
 	if err != nil {
+		// should not happen
 		panic(err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, path, bodyReader)
-	if err != nil {
-		return nil, err
+	timestamp := fmt.Sprintf("%v", timeNow().Unix())
+	hmac := hmac.New(sha256.New, []byte(c.apiSecret))
+	hmac.Write([]byte(timestamp))
+	hmac.Write([]byte(method))
+	hmac.Write([]byte(url.Path))
+
+	if body != nil && method != http.MethodGet {
+		go func() error {
+			if err := json.NewEncoder(bodyWriter).Encode(body); err != nil {
+				return bodyWriter.CloseWithError(err)
+			}
+
+			return bodyWriter.Close()
+		}()
+
+		if err := json.NewEncoder(hmac).Encode(body); err != nil {
+			return nil, err
+		}
+	} else {
+		bodyWriter.Close()
 	}
 
-	timestamp := fmt.Sprintf("%v", timeNow().Unix())
-	hmac := hmac.New(sha256.New, []byte(c.token))
-	hmac.Write([]byte(timestamp))
-	hmac.Write([]byte(http.MethodPost))
-	hmac.Write([]byte(endpoint))
-	if err := json.NewEncoder(hmac).Encode(body); err != nil {
-		return nil, err
+	req, err := http.NewRequest(method, url.String(), bodyReader)
+	if err != nil {
+		// should not happen
+		panic(err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("CB-VERSION", "2022-11-28")
-	req.Header.Set("CB-ACCESS-KEY", c.token)
+	req.Header.Set("CB-ACCESS-KEY", c.apiKey)
 	req.Header.Set("CB-ACCESS-SIGN", hex.EncodeToString(hmac.Sum(nil)))
 	req.Header.Set("CB-ACCESS-TIMESTAMP", timestamp)
 
@@ -123,14 +167,24 @@ func request[T any, U any](c *Client, endpoint string, body T) (*U, error) {
 	return &decoded.Data, nil
 }
 
-func NewClient(account, token string) Client {
-	return Client{&http.Client{}, account, token}
+func NewClient(apiKey, apiSecret string) Client {
+	return Client{&http.Client{}, apiKey, apiSecret}
 }
 
-func (c *Client) SendTransaction(transaction TxRequest) (*TxResponse, error) {
-	result, err := request[TxRequest, TxResponse](c, "/transactions", transaction)
+func (c *Client) GetAccounts() (*Accounts, error) {
+	result, err := request[struct{}, Accounts](c, http.MethodGet, "/accounts", nil)
 	if err != nil {
-		return nil, fmt.Errorf("coinbase: error sending transaction: %w", err)
+		return nil, fmt.Errorf("coinbase: while getting accounts: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) SendTransaction(account string, transaction TxRequest) (*TxResponse, error) {
+	path := fmt.Sprintf("/accounts/%v/transactions", url.PathEscape(account))
+
+	result, err := request[TxRequest, TxResponse](c, http.MethodPost, path, &transaction)
+	if err != nil {
+		return nil, fmt.Errorf("coinbase: while sending transaction: %w", err)
 	}
 	return result, nil
 }
