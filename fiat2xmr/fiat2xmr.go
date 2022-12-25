@@ -20,6 +20,7 @@ type Opts struct {
 	SideShiftSecret string
 	Address         string
 	VolumeBase      float64
+	DryRun          bool
 }
 
 func Convert(opts Opts) {
