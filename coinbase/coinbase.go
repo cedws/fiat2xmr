@@ -24,85 +24,6 @@ type Client struct {
 	apiSecret string
 }
 
-type TxRequest struct {
-	Type                        string
-	To                          string
-	Amount                      string
-	Currency                    string
-	SkipNotifications           bool
-	Fee                         string
-	Nonce                       string
-	ToFinancialInstitution      bool
-	FinancialInstitutionWebsite string
-}
-
-type TxResponse struct {
-	ID     string
-	Type   string
-	Status string
-	Amount struct {
-		Amount   string
-		Currency string
-	}
-	NativeAmount struct {
-		Amount   string
-		Currency string
-	}
-	Description  string
-	CreatedAt    string
-	UpdatedAt    string
-	Resource     string
-	ResourcePath string
-	Network      struct {
-		Status string
-		Hash   string
-		Name   string
-	}
-	To struct {
-		Resource string
-		Address  string
-	}
-	Details struct {
-		Title    string
-		Subtitle string
-	}
-}
-
-type Accounts []Account
-
-type Account struct {
-	ID       string
-	Name     string
-	Primary  bool
-	Type     string
-	Currency struct {
-		Code         string
-		Name         string
-		Color        string
-		SortIndex    int
-		Exponent     int
-		Type         string
-		AddressRegex string
-		AssetID      string
-		Slug         string
-	}
-	Balance struct {
-		Amount   string
-		Currency string
-	}
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	Resource         string
-	ResourcePath     string
-	AllowDeposits    bool
-	AllowWithdrawals bool
-	Rewards          struct {
-		Apy          string
-		FormattedApy string
-		Label        string
-	}
-}
-
 func request[T any, U any](c *Client, method, endpoint string, body *T) (*U, error) {
 	bodyReader, bodyWriter := io.Pipe()
 
@@ -167,29 +88,67 @@ func request[T any, U any](c *Client, method, endpoint string, body *T) (*U, err
 	return &decoded.Data, nil
 }
 
-func NewClient(apiKey, apiSecret string) Client {
-	return Client{&http.Client{}, apiKey, apiSecret}
+func NewClient(apiKey, apiSecret string) *Client {
+	return &Client{&http.Client{}, apiKey, apiSecret}
 }
 
-func (c *Client) GetAccountByCode(code string) (*Account, error) {
+func (c *Client) GetAccountByCode(code string) (*AccountResponse, error) {
 	path := fmt.Sprintf("/accounts/%v", url.PathEscape(code))
 
-	result, err := request[struct{}, Account](c, http.MethodGet, path, nil)
+	result, err := request[struct{}, AccountResponse](c, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("while getting accounts by code: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) GetAccounts() (*AccountsResponse, error) {
+	result, err := request[struct{}, AccountsResponse](c, http.MethodGet, "/accounts", nil)
 	if err != nil {
 		return nil, fmt.Errorf("while getting accounts: %w", err)
 	}
 	return result, nil
 }
 
-func (c *Client) GetAccounts() (*Accounts, error) {
-	result, err := request[struct{}, Accounts](c, http.MethodGet, "/accounts", nil)
+func (c *Client) GetPaymentMethods() (*PaymentMethodsResponse, error) {
+	result, err := request[struct{}, PaymentMethodsResponse](c, http.MethodGet, "/payment-methods", nil)
+	if err != nil {
+		return nil, fmt.Errorf("while getting payment methods: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) GetAddresses(account string) (*AddressesResponse, error) {
+	path := fmt.Sprintf("/accounts/%v/addresses", url.PathEscape(account))
+
+	result, err := request[struct{}, AddressesResponse](c, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("while getting accounts: %w", err)
 	}
 	return result, nil
 }
 
-func (c *Client) SendTransaction(account string, transaction TxRequest) (*TxResponse, error) {
+func (c *Client) CreateAddress(account string) (*AddressResponse, error) {
+	path := fmt.Sprintf("/accounts/%v/addresses", url.PathEscape(account))
+
+	result, err := request[struct{}, AddressResponse](c, http.MethodPost, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("while creating address: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateBuyOrder(account string, order BuyOrderRequest) (*BuyOrderResponse, error) {
+	path := fmt.Sprintf("/accounts/%v/buys", url.PathEscape(account))
+
+	result, err := request[BuyOrderRequest, BuyOrderResponse](c, http.MethodPost, path, &order)
+	if err != nil {
+		return nil, fmt.Errorf("while creating buy order: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateTransaction(account string, transaction TxRequest) (*TxResponse, error) {
 	path := fmt.Sprintf("/accounts/%v/transactions", url.PathEscape(account))
 
 	result, err := request[TxRequest, TxResponse](c, http.MethodPost, path, &transaction)

@@ -23,10 +23,19 @@ type Opts struct {
 }
 
 func Convert(opts Opts) {
+	cbClient := coinbase.NewClient(opts.CoinbaseKey, opts.CoinbaseSecret)
+
+	account, err := cbClient.GetAccountByCode(baseCurrency)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	refundAddress := getRefundAddress(cbClient, baseCurrency)
+
 	ssClient := sideshift.NewClient(opts.SideShiftSecret)
 	shift, err := ssClient.CreateVariableShift(sideshift.VariableShiftRequest{
-		SettleAddress: sideshift.WalletAddress(opts.Address),
-		RefundAddress: "", // TODO
+		SettleAddress: opts.Address,
+		RefundAddress: refundAddress,
 		DepositCoin:   baseCurrency,
 		SettleCoin:    quoteCurrency,
 	})
@@ -34,18 +43,11 @@ func Convert(opts Opts) {
 		log.Fatal(err)
 	}
 
-	cbClient := coinbase.NewClient(opts.CoinbaseKey, opts.CoinbaseSecret)
-	account, err := cbClient.GetAccountByCode(baseCurrency)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = cbClient.SendTransaction(account.ID, coinbase.TxRequest{
+	_, err = cbClient.CreateTransaction(account.ID, coinbase.TxRequest{
 		Type:     "send",
 		To:       shift.DepositAddress,
 		Amount:   fmt.Sprintf("%f", opts.VolumeBase),
 		Currency: baseCurrency,
-		Nonce:    "",
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -69,4 +71,24 @@ func Convert(opts Opts) {
 			// TODO
 		}
 	}
+}
+
+func getRefundAddress(cbClient *coinbase.Client, currency string) string {
+	addresses, err := cbClient.GetAddresses(baseCurrency)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var refundAddress string
+	if len(*addresses) > 0 {
+		refundAddress = (*addresses)[0].Address
+	} else {
+		address, err := cbClient.CreateAddress(baseCurrency)
+		if err != nil {
+			log.Fatal(err)
+		}
+		refundAddress = address.Address
+	}
+
+	return refundAddress
 }

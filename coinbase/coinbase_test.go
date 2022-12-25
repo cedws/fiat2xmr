@@ -28,7 +28,7 @@ func TestAccessKey(t *testing.T) {
 	coinbaseURL = srv.URL
 
 	client := NewClient("123", expectedToken)
-	_, err := client.SendTransaction("", TxRequest{})
+	_, err := client.CreateTransaction("", TxRequest{})
 	assert.Nil(t, err)
 }
 
@@ -46,7 +46,7 @@ func TestAccessSign(t *testing.T) {
 	timeNow = fakeTime{}.Now
 
 	client := NewClient("123", "123")
-	_, err := client.SendTransaction("", TxRequest{})
+	_, err := client.CreateTransaction("", TxRequest{})
 	assert.Nil(t, err)
 }
 
@@ -63,6 +63,6 @@ func TestAccessTimestamp(t *testing.T) {
 	timeNow = fakeTime{}.Now
 
 	client := NewClient("123", "123")
-	_, err := client.SendTransaction("", TxRequest{})
+	_, err := client.CreateTransaction("", TxRequest{})
 	assert.Nil(t, err)
 }

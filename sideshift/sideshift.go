@@ -92,11 +92,9 @@ func NewClient(apiSecret string) Client {
 	return Client{&http.Client{}, apiSecret}
 }
 
-type WalletAddress string
-
 type VariableShiftRequest struct {
-	SettleAddress  WalletAddress
-	RefundAddress  WalletAddress
+	SettleAddress  string
+	RefundAddress  string
 	AffiliateID    string
 	DepositCoin    string
 	SettleCoin     string
