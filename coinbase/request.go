@@ -1,15 +1,5 @@
 package coinbase
 
-type BuyOrderRequest struct {
-	Amount               string
-	Total                string
-	Currency             string
-	PaymentMethod        string
-	AgreeBTCAmountVaries bool
-	Commit               bool
-	Quote                bool
-}
-
 type TxRequest struct {
 	Type                        string
 	To                          string

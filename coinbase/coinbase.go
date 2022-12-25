@@ -138,16 +138,6 @@ func (c *Client) CreateAddress(account string) (*AddressResponse, error) {
 	return result, nil
 }
 
-func (c *Client) CreateBuyOrder(account string, order BuyOrderRequest) (*BuyOrderResponse, error) {
-	path := fmt.Sprintf("/accounts/%v/buys", url.PathEscape(account))
-
-	result, err := request[BuyOrderRequest, BuyOrderResponse](c, http.MethodPost, path, &order)
-	if err != nil {
-		return nil, fmt.Errorf("while creating buy order: %w", err)
-	}
-	return result, nil
-}
-
 func (c *Client) CreateTransaction(account string, transaction TxRequest) (*TxResponse, error) {
 	path := fmt.Sprintf("/accounts/%v/transactions", url.PathEscape(account))
 
