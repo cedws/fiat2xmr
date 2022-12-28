@@ -18,130 +18,130 @@ type AddressResponse struct {
 type AccountsResponse []AccountResponse
 
 type AccountResponse struct {
-	ID       string
-	Name     string
-	Primary  bool
-	Type     string
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Primary  bool   `json:"primary"`
+	Type     string `json:"type"`
 	Currency struct {
-		Code         string
-		Name         string
-		Color        string
-		SortIndex    int
-		Exponent     int
-		Type         string
-		AddressRegex string
-		AssetID      string
-		Slug         string
-	}
+		Code         string `json:"code"`
+		Name         string `json:"name"`
+		Color        string `json:"color"`
+		SortIndex    int    `json:"sort_index"`
+		Exponent     int    `json:"exponent"`
+		Type         string `json:"type"`
+		AddressRegex string `json:"address_regex"`
+		AssetID      string `json:"asset_id"`
+		Slug         string `json:"slug"`
+	} `json:"currency"`
 	Balance struct {
-		Amount   string
-		Currency string
-	}
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	Resource         string
-	ResourcePath     string
-	AllowDeposits    bool
-	AllowWithdrawals bool
-	Rewards          struct {
-		Apy          string
-		FormattedApy string
-		Label        string
-	}
-}
-
-type BuyOrderResponse struct {
-	ID            string
-	Status        string
-	PaymentMethod struct {
-		ID           string
-		Resource     string
-		ResourcePath string
-	}
-	Transaction struct {
-		ID           string
-		Resource     string
-		ResourcePath string
-	}
-	Amount struct {
-		Amount   string
-		Currency string
-	}
-	Total struct {
-		Amount   string
-		Currency string
-	}
-	Subtotal struct {
-		Amount   string
-		Currency string
-	}
-	CreatedAt    string
-	UpdatedAt    string
-	Resource     string
-	ResourcePath string
-	Committed    bool
-	Instant      bool
-	Fee          struct {
-		Amount   string
-		Currency string
-	}
-	PayoutAt string
+		Amount   string `json:"amount"`
+		Currency string `json:"currency"`
+	} `json:"balance"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Resource         string    `json:"resource"`
+	ResourcePath     string    `json:"resource_path"`
+	AllowDeposits    bool      `json:"allow_deposits"`
+	AllowWithdrawals bool      `json:"allow_withdrawals"`
 }
 
 type TxResponse struct {
-	ID     string
-	Type   string
-	Status string
+	ID     string `json:"id"`
+	Type   string `json:"type"`
+	Status string `json:"status"`
 	Amount struct {
-		Amount   string
-		Currency string
-	}
+		Amount   string `json:"amount"`
+		Currency string `json:"currency"`
+	} `json:"amount"`
 	NativeAmount struct {
-		Amount   string
-		Currency string
-	}
-	Description  string
-	CreatedAt    string
-	UpdatedAt    string
-	Resource     string
-	ResourcePath string
-	Network      struct {
-		Status string
-		Hash   string
-		Name   string
-	}
-	To struct {
-		Resource string
-		Address  string
-	}
+		Amount   string `json:"amount"`
+		Currency string `json:"currency"`
+	} `json:"native_amount"`
+	Description  interface{} `json:"description"`
+	CreatedAt    string      `json:"created_at"`
+	UpdatedAt    string      `json:"updated_at"`
+	Resource     string      `json:"resource"`
+	ResourcePath string      `json:"resource_path"`
+	To           struct {
+		Resource string `json:"resource"`
+		Email    string `json:"email"`
+	} `json:"to"`
 	Details struct {
-		Title    string
-		Subtitle string
-	}
+		Title    string `json:"title"`
+		Subtitle string `json:"subtitle"`
+	} `json:"details"`
 }
-
 type PaymentMethodsResponse []PaymentMethodResponse
 
 type PaymentMethodResponse struct {
-	ID            string
-	Type          string
-	Name          string
-	Currency      string
-	PrimaryBuy    bool
-	PrimarySell   bool
-	AllowBuy      bool
-	AllowSell     bool
-	AllowDeposit  bool
-	AllowWithdraw bool
-	InstantBuy    bool
-	InstantSell   bool
-	CreatedAt     string
-	UpdatedAt     string
-	Resource      string
-	ResourcePath  string
+	ID            string `json:"id"`
+	Type          string `json:"type"`
+	Name          string `json:"name"`
+	Currency      string `json:"currency"`
+	PrimaryBuy    bool   `json:"primary_buy"`
+	PrimarySell   bool   `json:"primary_sell"`
+	AllowBuy      bool   `json:"allow_buy"`
+	AllowSell     bool   `json:"allow_sell"`
+	AllowDeposit  bool   `json:"allow_deposit"`
+	AllowWithdraw bool   `json:"allow_withdraw"`
+	InstantBuy    bool   `json:"instant_buy"`
+	InstantSell   bool   `json:"instant_sell"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
+	Resource      string `json:"resource"`
+	ResourcePath  string `json:"resource_path"`
 	FiatAccount   struct {
-		ID           string
-		Resource     string
-		ResourcePath string
-	}
+		ID           string `json:"id"`
+		Resource     string `json:"resource"`
+		ResourcePath string `json:"resource_path"`
+	} `json:"fiat_account"`
+}
+
+type AdvancedCreateOrderResponse struct {
+	Success         bool   `json:"success"`
+	FailureReason   string `json:"failure_reason"`
+	OrderID         string `json:"order_id"`
+	SuccessResponse struct {
+		OrderID       string `json:"order_id"`
+		ProductID     string `json:"product_id"`
+		Side          string `json:"side"`
+		ClientOrderID string `json:"client_order_id"`
+	} `json:"success_response"`
+	ErrorResponse struct {
+		Error                 string `json:"error"`
+		Message               string `json:"message"`
+		ErrorDetails          string `json:"error_details"`
+		PreviewFailureReason  string `json:"preview_failure_reason"`
+		NewOrderFailureReason string `json:"new_order_failure_reason"`
+	} `json:"error_response"`
+	OrderConfiguration struct {
+		MarketMarketIoc struct {
+			QuoteSize string `json:"quote_size"`
+			BaseSize  string `json:"base_size"`
+		} `json:"market_market_ioc"`
+		LimitLimitGtc struct {
+			BaseSize   string `json:"base_size"`
+			LimitPrice string `json:"limit_price"`
+			PostOnly   bool   `json:"post_only"`
+		} `json:"limit_limit_gtc"`
+		LimitLimitGtd struct {
+			BaseSize   string    `json:"base_size"`
+			LimitPrice string    `json:"limit_price"`
+			EndTime    time.Time `json:"end_time"`
+			PostOnly   bool      `json:"post_only"`
+		} `json:"limit_limit_gtd"`
+		StopLimitStopLimitGtc struct {
+			BaseSize      string `json:"base_size"`
+			LimitPrice    string `json:"limit_price"`
+			StopPrice     string `json:"stop_price"`
+			StopDirection string `json:"stop_direction"`
+		} `json:"stop_limit_stop_limit_gtc"`
+		StopLimitStopLimitGtd struct {
+			BaseSize      float64   `json:"base_size"`
+			LimitPrice    string    `json:"limit_price"`
+			StopPrice     string    `json:"stop_price"`
+			EndTime       time.Time `json:"end_time"`
+			StopDirection string    `json:"stop_direction"`
+		} `json:"stop_limit_stop_limit_gtd"`
+	} `json:"order_configuration"`
 }

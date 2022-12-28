@@ -14,8 +14,9 @@ import (
 
 // Overridden in tests.
 var (
-	coinbaseURL = "https://api.coinbase.com/v2"
-	timeNow     = time.Now
+	coinbaseV2, _ = url.Parse("https://api.coinbase.com/v2")
+	coinbaseV3, _ = url.Parse("https://api.coinbase.com/v3")
+	timeNow       = time.Now
 )
 
 type Client struct {
@@ -24,15 +25,24 @@ type Client struct {
 	apiSecret string
 }
 
-func request[T any, U any](c *Client, method, endpoint string, body *T) (*U, error) {
-	bodyReader, bodyWriter := io.Pipe()
-
-	coinbaseURL, err := url.Parse(coinbaseURL)
-	url := coinbaseURL.JoinPath(endpoint)
+func requestV2[T any, U any](c *Client, method, endpoint string, body *T) (*U, error) {
+	url := coinbaseV2.JoinPath(endpoint)
+	resp, err := request[T, struct {
+		Data U
+	}](c, method, url, body)
 	if err != nil {
-		// should not happen
-		panic(err)
+		return nil, err
 	}
+	return &resp.Data, nil
+}
+
+func requestV3[T any, U any](c *Client, method, endpoint string, body *T) (*U, error) {
+	url := coinbaseV3.JoinPath(endpoint)
+	return request[T, U](c, method, url, body)
+}
+
+func request[T any, U any](c *Client, method string, url *url.URL, body *T) (*U, error) {
+	bodyReader, bodyWriter := io.Pipe()
 
 	timestamp := fmt.Sprintf("%v", timeNow().Unix())
 	hmac := hmac.New(sha256.New, []byte(c.apiSecret))
@@ -73,19 +83,17 @@ func request[T any, U any](c *Client, method, endpoint string, body *T) (*U, err
 		return nil, err
 	}
 	defer res.Body.Close()
+	// drain body so TCP conn can be reused
+	defer io.Copy(io.Discard, res.Body)
 
 	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
 		return nil, fmt.Errorf("bad status code %v (%v)", res.StatusCode, http.StatusText(res.StatusCode))
 	}
-
-	var decoded struct {
-		Data U
-	}
+	var decoded U
 	if err := json.NewDecoder(res.Body).Decode(&decoded); err != nil {
 		return nil, err
 	}
-
-	return &decoded.Data, nil
+	return &decoded, nil
 }
 
 func NewClient(apiKey, apiSecret string) *Client {
@@ -95,7 +103,7 @@ func NewClient(apiKey, apiSecret string) *Client {
 func (c *Client) GetAccountByCode(code string) (*AccountResponse, error) {
 	path := fmt.Sprintf("/accounts/%v", url.PathEscape(code))
 
-	result, err := request[struct{}, AccountResponse](c, http.MethodGet, path, nil)
+	result, err := requestV2[struct{}, AccountResponse](c, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("while getting accounts by code: %w", err)
 	}
@@ -103,7 +111,7 @@ func (c *Client) GetAccountByCode(code string) (*AccountResponse, error) {
 }
 
 func (c *Client) GetAccounts() (*AccountsResponse, error) {
-	result, err := request[struct{}, AccountsResponse](c, http.MethodGet, "/accounts", nil)
+	result, err := requestV2[struct{}, AccountsResponse](c, http.MethodGet, "/accounts", nil)
 	if err != nil {
 		return nil, fmt.Errorf("while getting accounts: %w", err)
 	}
@@ -111,7 +119,7 @@ func (c *Client) GetAccounts() (*AccountsResponse, error) {
 }
 
 func (c *Client) GetPaymentMethods() (*PaymentMethodsResponse, error) {
-	result, err := request[struct{}, PaymentMethodsResponse](c, http.MethodGet, "/payment-methods", nil)
+	result, err := requestV2[struct{}, PaymentMethodsResponse](c, http.MethodGet, "/payment-methods", nil)
 	if err != nil {
 		return nil, fmt.Errorf("while getting payment methods: %w", err)
 	}
@@ -121,9 +129,9 @@ func (c *Client) GetPaymentMethods() (*PaymentMethodsResponse, error) {
 func (c *Client) GetAddresses(account string) (*AddressesResponse, error) {
 	path := fmt.Sprintf("/accounts/%v/addresses", url.PathEscape(account))
 
-	result, err := request[struct{}, AddressesResponse](c, http.MethodGet, path, nil)
+	result, err := requestV2[struct{}, AddressesResponse](c, http.MethodGet, path, nil)
 	if err != nil {
-		return nil, fmt.Errorf("while getting accounts: %w", err)
+		return nil, fmt.Errorf("while getting addresses: %w", err)
 	}
 	return result, nil
 }
@@ -131,7 +139,7 @@ func (c *Client) GetAddresses(account string) (*AddressesResponse, error) {
 func (c *Client) CreateAddress(account string) (*AddressResponse, error) {
 	path := fmt.Sprintf("/accounts/%v/addresses", url.PathEscape(account))
 
-	result, err := request[struct{}, AddressResponse](c, http.MethodPost, path, nil)
+	result, err := requestV2[struct{}, AddressResponse](c, http.MethodPost, path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("while creating address: %w", err)
 	}
@@ -141,9 +149,17 @@ func (c *Client) CreateAddress(account string) (*AddressResponse, error) {
 func (c *Client) CreateTransaction(account string, transaction TxRequest) (*TxResponse, error) {
 	path := fmt.Sprintf("/accounts/%v/transactions", url.PathEscape(account))
 
-	result, err := request[TxRequest, TxResponse](c, http.MethodPost, path, &transaction)
+	result, err := requestV2[TxRequest, TxResponse](c, http.MethodPost, path, &transaction)
 	if err != nil {
-		return nil, fmt.Errorf("while sending transaction: %w", err)
+		return nil, fmt.Errorf("while creating transaction: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) AdvancedCreateOrder(order AdvancedCreateOrderRequest) (*AdvancedCreateOrderResponse, error) {
+	result, err := requestV3[AdvancedCreateOrderRequest, AdvancedCreateOrderResponse](c, http.MethodPost, "/brokerage/orders", &order)
+	if err != nil {
+		return nil, fmt.Errorf("while creating advanced order: %w", err)
 	}
 	return result, nil
 }
