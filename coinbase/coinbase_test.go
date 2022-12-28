@@ -32,7 +32,7 @@ func TestAccessKey(t *testing.T) {
 }
 
 func TestAccessSign(t *testing.T) {
-	expectedSig := "6204e92e93efedc76155e64fc42744debfbb6018dfa0ab286702ff9831698156"
+	expectedSig := "3e8d467949bb98bc2c9f620aebc822930e2ffbcfd77d09b8b78461a18f5acdf2"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, expectedSig, r.Header.Get("CB-ACCESS-SIGN"))
 		w.Write([]byte("{}"))
