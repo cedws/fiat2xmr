@@ -12,6 +12,13 @@ type TxRequest struct {
 	FinancialInstitutionWebsite string `json:"financial_institution_website,omitempty"`
 }
 
+type DepositRequest struct {
+	Amount        string `json:"amount,omitempty"`
+	Currency      string `json:"currency,omitempty"`
+	PaymentMethod string `json:"payment_method,omitempty"`
+	Commit        bool   `json:"commit,omitempty"`
+}
+
 type AdvancedCreateOrderRequest struct {
 	ClientOrderID      string `json:"client_order_id,omitempty"`
 	ProductID          string `json:"product_id,omitempty"`

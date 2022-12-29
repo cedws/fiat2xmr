@@ -28,10 +28,18 @@ type Client struct {
 func requestV2[T any, U any](c *Client, method, endpoint string, body *T) (*U, error) {
 	url := coinbaseV2.JoinPath(endpoint)
 	resp, err := request[T, struct {
+		Errors []struct {
+			ID      string
+			Message string
+		}
 		Data U
 	}](c, method, url, body)
 	if err != nil {
-		return nil, err
+		var errorMessage string
+		if len(resp.Errors) > 0 {
+			errorMessage = resp.Errors[0].Message
+		}
+		return nil, fmt.Errorf("%w: '%v'", err, errorMessage)
 	}
 	return &resp.Data, nil
 }
@@ -86,13 +94,15 @@ func request[T any, U any](c *Client, method string, url *url.URL, body *T) (*U,
 	// drain body so TCP conn can be reused
 	defer io.Copy(io.Discard, res.Body)
 
-	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
-		return nil, fmt.Errorf("bad status code %v (%v)", res.StatusCode, http.StatusText(res.StatusCode))
-	}
 	var decoded U
 	if err := json.NewDecoder(res.Body).Decode(&decoded); err != nil {
 		return nil, err
 	}
+
+	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
+		return &decoded, fmt.Errorf("bad status code %v", res.StatusCode)
+	}
+
 	return &decoded, nil
 }
 
@@ -152,6 +162,16 @@ func (c *Client) CreateTransaction(account string, transaction TxRequest) (*TxRe
 	result, err := requestV2[TxRequest, TxResponse](c, http.MethodPost, path, &transaction)
 	if err != nil {
 		return nil, fmt.Errorf("while creating transaction: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateDeposit(account string, deposit DepositRequest) (*DepositResponse, error) {
+	path := fmt.Sprintf("/accounts/%v/deposits", url.PathEscape(account))
+
+	result, err := requestV2[DepositRequest, DepositResponse](c, http.MethodPost, path, &deposit)
+	if err != nil {
+		return nil, fmt.Errorf("while creating deposit: %w", err)
 	}
 	return result, nil
 }

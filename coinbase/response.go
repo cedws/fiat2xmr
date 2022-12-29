@@ -97,6 +97,39 @@ type PaymentMethodResponse struct {
 	} `json:"fiat_account"`
 }
 
+type DepositResponse struct {
+	ID            string `json:"id"`
+	Status        string `json:"status"`
+	PaymentMethod struct {
+		ID           string `json:"id"`
+		Resource     string `json:"resource"`
+		ResourcePath string `json:"resource_path"`
+	} `json:"payment_method"`
+	Transaction struct {
+		ID           string `json:"id"`
+		Resource     string `json:"resource"`
+		ResourcePath string `json:"resource_path"`
+	} `json:"transaction"`
+	Amount struct {
+		Amount   string `json:"amount"`
+		Currency string `json:"currency"`
+	} `json:"amount"`
+	Subtotal struct {
+		Amount   string `json:"amount"`
+		Currency string `json:"currency"`
+	} `json:"subtotal"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    string    `json:"updated_at"`
+	Resource     string    `json:"resource"`
+	ResourcePath string    `json:"resource_path"`
+	Committed    bool      `json:"committed"`
+	Fee          struct {
+		Amount   string `json:"amount"`
+		Currency string `json:"currency"`
+	} `json:"fee"`
+	PayoutAt string `json:"payout_at"`
+}
+
 type AdvancedCreateOrderResponse struct {
 	Success         bool   `json:"success"`
 	FailureReason   string `json:"failure_reason"`
