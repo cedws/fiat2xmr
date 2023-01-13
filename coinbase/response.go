@@ -130,7 +130,7 @@ type DepositResponse struct {
 	PayoutAt string `json:"payout_at"`
 }
 
-type AdvancedCreateOrderResponse struct {
+type CreateAdvancedOrderResponse struct {
 	Success         bool   `json:"success"`
 	FailureReason   string `json:"failure_reason"`
 	OrderID         string `json:"order_id"`

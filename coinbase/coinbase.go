@@ -176,8 +176,8 @@ func (c *Client) CreateDeposit(account string, deposit DepositRequest) (*Deposit
 	return result, nil
 }
 
-func (c *Client) AdvancedCreateOrder(order AdvancedCreateOrderRequest) (*AdvancedCreateOrderResponse, error) {
-	result, err := requestV3[AdvancedCreateOrderRequest, AdvancedCreateOrderResponse](c, http.MethodPost, "/brokerage/orders", &order)
+func (c *Client) CreateAdvancedOrder(order CreateAdvancedOrderRequest) (*CreateAdvancedOrderResponse, error) {
+	result, err := requestV3[CreateAdvancedOrderRequest, CreateAdvancedOrderResponse](c, http.MethodPost, "/brokerage/orders", &order)
 	if err != nil {
 		return nil, fmt.Errorf("while creating advanced order: %w", err)
 	}

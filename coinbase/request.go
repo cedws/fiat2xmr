@@ -19,14 +19,14 @@ type DepositRequest struct {
 	Commit        bool   `json:"commit,omitempty"`
 }
 
-type AdvancedCreateOrderRequest struct {
+type CreateAdvancedOrderRequest struct {
 	ClientOrderID      string `json:"client_order_id,omitempty"`
 	ProductID          string `json:"product_id,omitempty"`
 	Side               string `json:"side,omitempty"`
 	OrderConfiguration struct {
 		MarketMarketIOC struct {
-			QuoteSize string `json:"quote_size,omitempty"`
-			BaseSize  string `json:"base_size,omitempty"`
+			QuoteSize float64 `json:"quote_size,omitempty,string"`
+			BaseSize  float64 `json:"base_size,omitempty,string"`
 		} `json:"market_market_ioc,omitempty"`
 	} `json:"order_configuration,omitempty"`
 }
