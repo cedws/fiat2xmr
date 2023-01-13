@@ -23,7 +23,6 @@ func init() {
 	rootCmd.Flags().StringVar(&opts.SideShiftSecret, "sideshift-secret", "", "sideshift account secret")
 	rootCmd.Flags().StringVarP(&opts.Address, "address", "x", "", "monero wallet address")
 	rootCmd.Flags().Float64VarP(&opts.VolumeBase, "volume-base", "v", 0, "volume to buy using base currency")
-	rootCmd.Flags().BoolVarP(&opts.DryRun, "dry-run", "d", false, "enable dry run")
 
 	rootCmd.MarkFlagRequired("coinbase-key")
 	rootCmd.MarkFlagRequired("coinbase-secret")

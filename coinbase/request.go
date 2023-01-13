@@ -1,15 +1,15 @@
 package coinbase
 
 type TxRequest struct {
-	Type                        string `json:"type,omitempty"`
-	To                          string `json:"to,omitempty"`
-	Amount                      string `json:"amount,omitempty"`
-	Currency                    string `json:"currency,omitempty"`
-	SkipNotifications           bool   `json:"skip_notifications,omitempty"`
-	Fee                         string `json:"fee,omitempty"`
-	Nonce                       string `json:"nonce,omitempty"`
-	ToFinancialInstitution      bool   `json:"to_financial_institution,omitempty"`
-	FinancialInstitutionWebsite string `json:"financial_institution_website,omitempty"`
+	Type                        string  `json:"type,omitempty"`
+	To                          string  `json:"to,omitempty"`
+	Amount                      float64 `json:"amount,omitempty,string"`
+	Currency                    string  `json:"currency,omitempty"`
+	SkipNotifications           bool    `json:"skip_notifications,omitempty"`
+	Fee                         string  `json:"fee,omitempty"`
+	Nonce                       string  `json:"nonce,omitempty"`
+	ToFinancialInstitution      bool    `json:"to_financial_institution,omitempty"`
+	FinancialInstitutionWebsite string  `json:"financial_institution_website,omitempty"`
 }
 
 type DepositRequest struct {

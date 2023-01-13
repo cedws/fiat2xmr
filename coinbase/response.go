@@ -34,8 +34,8 @@ type AccountResponse struct {
 		Slug         string `json:"slug"`
 	} `json:"currency"`
 	Balance struct {
-		Amount   string `json:"amount"`
-		Currency string `json:"currency"`
+		Amount   float64 `json:"amount,string"`
+		Currency string  `json:"currency"`
 	} `json:"balance"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
@@ -71,6 +71,7 @@ type TxResponse struct {
 		Subtitle string `json:"subtitle"`
 	} `json:"details"`
 }
+
 type PaymentMethodsResponse []PaymentMethodResponse
 
 type PaymentMethodResponse struct {

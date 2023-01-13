@@ -35,11 +35,10 @@ func requestV2[T any, U any](c *Client, method, endpoint string, body *T) (*U, e
 		Data U
 	}](c, method, url, body)
 	if err != nil {
-		var errorMessage string
-		if len(resp.Errors) > 0 {
-			errorMessage = resp.Errors[0].Message
+		if resp != nil && len(resp.Errors) > 0 {
+			return nil, fmt.Errorf("%w (%v)", err, resp.Errors[0].Message)
 		}
-		return nil, fmt.Errorf("%w: '%v'", err, errorMessage)
+		return nil, err
 	}
 	return &resp.Data, nil
 }
