@@ -9,22 +9,39 @@ import (
 	"time"
 )
 
-// Overridden in tests.
-var (
-	sideshiftURL = "https://sideshift.ai/api/v2"
+const (
+	StatusWaiting    = "waiting"
+	StatusPending    = "pending"
+	StatusProcessing = "processing"
+	StatusReview     = "review"
+	StatusSettling   = "settling"
+	StatusSettled    = "settled"
+	StatusRefund     = "refund"
+	StatusRefunding  = "refunding"
+	StatusRefunded   = "refunded"
+	StatusMultiple   = "multiple"
 )
 
-func request[T any, U any](c *Client, method, endpoint string, body T) (*U, error) {
+// Overridden in tests.
+var (
+	sideshiftV2 = "https://sideshift.ai/api/v2"
+)
+
+func request[T any, U any](c *Client, method, endpoint string, body *T) (*U, error) {
 	bodyReader, bodyWriter := io.Pipe()
 
-	go func() error {
-		if err := json.NewEncoder(bodyWriter).Encode(body); err != nil {
-			return bodyWriter.CloseWithError(err)
-		}
-		return bodyWriter.Close()
-	}()
+	if body != nil && method != http.MethodGet {
+		go func() error {
+			if err := json.NewEncoder(bodyWriter).Encode(body); err != nil {
+				return bodyWriter.CloseWithError(err)
+			}
+			return bodyWriter.Close()
+		}()
+	} else {
+		bodyWriter.Close()
+	}
 
-	path, err := url.JoinPath(sideshiftURL, endpoint)
+	path, err := url.JoinPath(sideshiftV2, endpoint)
 	if err != nil {
 		panic(err)
 	}
@@ -41,6 +58,8 @@ func request[T any, U any](c *Client, method, endpoint string, body T) (*U, erro
 		return nil, err
 	}
 	defer res.Body.Close()
+	// drain body so TCP conn can be reused
+	defer io.Copy(io.Discard, res.Body)
 
 	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
 		// would be nice to just embed the return type in this struct but alas type parameters cannot be embedded
@@ -54,12 +73,11 @@ func request[T any, U any](c *Client, method, endpoint string, body T) (*U, erro
 			return nil, err
 		}
 
-		statusText := http.StatusText(res.StatusCode)
 		if len(decoded.Error.Message) != 0 {
-			return nil, fmt.Errorf("status %v from server: %v", statusText, decoded.Error.Message)
+			return nil, fmt.Errorf("bad status code %v: %v", res.StatusCode, decoded.Error.Message)
 		}
 
-		return nil, fmt.Errorf("status %v from server", statusText)
+		return nil, fmt.Errorf("bad status code %v", res.StatusCode)
 	}
 
 	var decoded U
@@ -70,19 +88,6 @@ func request[T any, U any](c *Client, method, endpoint string, body T) (*U, erro
 	return &decoded, nil
 }
 
-const (
-	StatusWaiting    = "waiting"
-	StatusPending    = "pending"
-	StatusProcessing = "processing"
-	StatusReview     = "review"
-	StatusSettling   = "settling"
-	StatusSettled    = "settled"
-	StatusRefund     = "refund"
-	StatusRefunding  = "refunding"
-	StatusRefunded   = "refunded"
-	StatusMultiple   = "multiple"
-)
-
 type Client struct {
 	client    *http.Client
 	apiSecret string
@@ -92,71 +97,69 @@ func NewClient(apiSecret string) Client {
 	return Client{&http.Client{}, apiSecret}
 }
 
-type VariableShiftRequest struct {
-	SettleAddress  string
-	RefundAddress  string
-	AffiliateID    string
-	DepositCoin    string
-	SettleCoin     string
-	CommissionRate string
-}
-
-type VariableShiftResponse struct {
-	ID             string
-	CreatedAt      time.Time
-	DepositCoin    string
-	SettleCoin     string
-	DepositNetwork string
-	SettleNetwork  string
-	DepositAddress string
-	SettleAddress  string
-	DepositMin     string
-	DepositMax     string
-	RefundAddress  string
-	Type           string
-	ExpiresAt      time.Time
-	Status         string
-}
-
-type GetShiftResponse struct {
-	ID                string
-	CreatedAt         time.Time
-	DepositCoin       string
-	SettleCoin        string
-	DepositNetwork    string
-	SettleNetwork     string
-	DepositAddress    string
-	SettleAddress     string
-	DepositMin        string
-	DepositMax        string
-	Type              string
-	ExpiresAt         time.Time
-	Status            string
-	UpdatedAt         time.Time
-	DepositHash       string
-	SettleHash        string
-	DepositReceivedAt time.Time
-	Rate              string
-}
-
-func (c *Client) CreateVariableShift(shift VariableShiftRequest) (*VariableShiftResponse, error) {
-	res, err := request[VariableShiftRequest, VariableShiftResponse](c, http.MethodPost, "/shifts/variable", shift)
+func (c *Client) CanShift() (bool, error) {
+	perms, err := c.GetPermissions()
 	if err != nil {
-		return nil, fmt.Errorf("sideshift: while creating variable shift: %w", err)
+		return false, err
+	}
+
+	return perms.CreateShift, nil
+}
+
+func (c *Client) GetPermissions() (*PermissionsResponse, error) {
+	res, err := request[struct{}, PermissionsResponse](c, http.MethodGet, "/permissions", nil)
+	if err != nil {
+		return nil, fmt.Errorf("while getting permissions: %w", err)
 	}
 
 	return res, nil
 }
 
-func (c *Client) GetShift(shiftID string) (*GetShiftResponse, error) {
+func (c *Client) CreateVariableShift(shift VariableShiftRequest) (*VariableShiftResponse, error) {
+	res, err := request[VariableShiftRequest, VariableShiftResponse](c, http.MethodPost, "/shifts/variable", &shift)
+	if err != nil {
+		return nil, fmt.Errorf("while creating variable shift: %w", err)
+	}
+
+	return res, nil
+}
+
+func (c *Client) PollShift(shiftID string) (shift *ShiftResponse, err error) {
+Loop:
+	for range time.Tick(10 * time.Second) {
+		shift, err = c.GetShift(shiftID)
+		if err != nil {
+			return nil, err
+		}
+
+		if time.Now().After(shift.ExpiresAt) {
+			// TODO: return error?
+			return shift, nil
+		}
+
+		switch status := shift.Status; status {
+		case StatusWaiting, StatusPending, StatusProcessing, StatusSettling:
+			continue
+		case StatusSettled:
+			// OK, all done
+			break Loop
+		default:
+			return nil, fmt.Errorf("unknown shift status %v", status)
+		}
+	}
+
+	return shift, nil
+}
+
+func (c *Client) GetShift(shiftID string) (*ShiftResponse, error) {
 	path, err := url.JoinPath("/shifts", url.PathEscape(shiftID))
 	if err != nil {
 		panic(err)
 	}
 
-	res, err := request[struct{}, GetShiftResponse](c, http.MethodGet, path, struct{}{})
+	res, err := request[struct{}, ShiftResponse](c, http.MethodGet, path, nil)
 	if err != nil {
-		return nil, fmt.Errorf("sideshift: while getting shift: %w", err)
+		return nil, fmt.Errorf("while getting shift: %w", err)
 	}
 
 	return res, nil
