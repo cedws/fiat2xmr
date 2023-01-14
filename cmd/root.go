@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"log"
-
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/text"
 	"github.com/cedws/fiat2xmr/coinbase"
 	"github.com/cedws/fiat2xmr/fiat2xmr"
 	"github.com/cedws/fiat2xmr/sideshift"
@@ -13,13 +13,16 @@ var opts fiat2xmr.Opts
 
 var rootCmd = &cobra.Command{
 	Use: "fiat2xmr",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		log.SetHandler(text.Default)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		ssClient := sideshift.NewClient(opts.SideShiftSecret)
 		if canShift, err := ssClient.CanShift(); !canShift || err != nil {
-			if !canShift {
-				log.Fatal("sideshift account is unable to create shifts")
+			if err != nil {
+				log.Fatalf("%+v", err)
 			}
-			log.Fatal(err)
+			log.Fatal("sideshift account is unable to create shifts")
 		}
 		cbClient := coinbase.NewClient(opts.CoinbaseKey, opts.CoinbaseSecret)
 
@@ -42,6 +45,6 @@ func init() {
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
+		log.Fatalf("%+v", err)
 	}
 }
