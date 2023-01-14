@@ -1,4 +1,4 @@
 # fiat2xmr
-Due to some fucking UK regulations it is not possible to buy one of the only private cryptocurrencies, Monero, on exchanges directly. It is however possible to purchase other currencies and convert them to Monero using services such as [SideShift](https://sideshift.ai). This tool aims to automate the process making it a single step to turn fiat in your Coinbase account into Monero deposited into your wallet. It should also highlight how utterly fucking stupid UK regulations can be.
+Due to regulations, Monero can't be bought directly on cryptocurrency exchanges in the UK. It's trivial however to buy another currency and exchange it for XMR. This tool uses [Coinbase](https://coinbase.com) and [SideShift](https://sideshift.ai) to automatically convert fiat into XMR. All you need to do is deposit fiat into your Coinbase account. Fees are minimised by using the advanced order API and should be typically less than 1%.
 
-Work in progress.
+You should not use this tool unless you are comfortable with using Coinbase and SideShift. Ensure your API keys are properly protected. I take no responsibility for any issues you may encounter.
