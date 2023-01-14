@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	fiatCurrency  = "GBP"
 	baseCurrency  = "LTC"
 	quoteCurrency = "XMR"
 )
@@ -20,49 +21,55 @@ type Opts struct {
 	CoinbaseSecret  string
 	SideShiftSecret string
 	Address         string
-	VolumeBase      float64
 }
 
-func Convert(opts Opts) {
-	ssClient := sideshift.NewClient(opts.SideShiftSecret)
-	if canShift, err := ssClient.CanShift(); !canShift || err != nil {
-		log.Fatal("sideshift account is unable to create shifts")
-	}
+type Converter struct {
+	ssClient *sideshift.Client
+	cbClient *coinbase.Client
+}
 
-	cbClient := coinbase.NewClient(opts.CoinbaseKey, opts.CoinbaseSecret)
-	if err := createOrder(cbClient, baseCurrency); err != nil {
+func NewConverter(ssClient *sideshift.Client, cbClient *coinbase.Client) *Converter {
+	return &Converter{ssClient, cbClient}
+}
+
+func (c *Converter) Convert(opts Opts) {
+	if err := c.createOrder(baseCurrency); err != nil {
+		log.Fatal(err)
+	}
+	// TODO: somehow check if we have enough to shift before creating an order
+	if err := c.assertShiftMinimum(); err != nil {
 		log.Fatal(err)
 	}
 
-	refundAddress, err := getRefundAddress(cbClient, baseCurrency)
+	baseAccount, err := c.cbClient.GetAccountByCode(baseCurrency)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	shift, err := ssClient.CreateVariableShift(sideshift.VariableShiftRequest{
-		SettleAddress: opts.Address,
-		RefundAddress: refundAddress,
+	quote, err := c.ssClient.CreateQuote(sideshift.QuoteRequest{
 		DepositCoin:   baseCurrency,
 		SettleCoin:    quoteCurrency,
+		DepositAmount: baseAccount.Balance.Amount,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	baseAccount, err := cbClient.GetAccountByCode(baseCurrency)
+	refundAddress, err := c.getRefundAddress(baseCurrency)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if baseAccount.Balance.Amount < shift.DepositMin {
-		log.Fatal("base currency balance is below sideshift minimum")
+	shift, err := c.ssClient.CreateFixedShift(sideshift.FixedShiftRequest{
+		SettleAddress: opts.Address,
+		RefundAddress: refundAddress,
+		QuoteID:       quote.ID,
+	})
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	if baseAccount.Balance.Amount > shift.DepositMax {
-		log.Fatal("base currency balance is above sideshift maximum")
-	}
-
-	_, err = cbClient.CreateTransaction(baseAccount.ID, coinbase.TxRequest{
+	_, err = c.cbClient.CreateTransaction(baseAccount.ID, coinbase.TxRequest{
 		Type:     "send",
 		To:       shift.DepositAddress,
 		Amount:   baseAccount.Balance.Amount,
@@ -72,7 +79,7 @@ func Convert(opts Opts) {
 		log.Fatal(err)
 	}
 
-	shiftResult, err := ssClient.PollShift(shift.ID)
+	shiftResult, err := c.ssClient.PollShift(shift.ID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -80,21 +87,39 @@ func Convert(opts Opts) {
 	log.Println(shiftResult)
 }
 
-func createOrder(cbClient *coinbase.Client, currency string) error {
-	fiatAccount, err := cbClient.GetAccountByCode("GBP")
+func (c *Converter) assertShiftMinimum() error {
+	baseAccount, err := c.cbClient.GetAccountByCode(baseCurrency)
+	if err != nil {
+		return err
+	}
+
+	pair, err := c.ssClient.GetPair(baseCurrency, quoteCurrency)
+	if err != nil {
+		return err
+	}
+
+	if pair.Min > baseAccount.Balance.Amount {
+		log.Fatalf("%v balance too low to initiate shift (minimum %v)", baseCurrency, pair.Min)
+	}
+
+	return nil
+}
+
+func (c *Converter) createOrder(currency string) error {
+	fiatAccount, err := c.cbClient.GetAccountByCode(fiatCurrency)
 	if err != nil {
 		return err
 	}
 
 	if fiatAccount.Balance.Amount > 0 {
-		order := coinbase.CreateAdvancedOrderRequest{
+		order := coinbase.AdvancedOrderRequest{
 			ClientOrderID: uuid.New().String(),
-			ProductID:     fmt.Sprintf("%v-GBP", currency),
+			ProductID:     fmt.Sprintf("%v-%v", currency, fiatCurrency),
 			Side:          "BUY",
 		}
 		order.OrderConfiguration.MarketMarketIOC.QuoteSize = fiatAccount.Balance.Amount
 
-		resp, err := cbClient.CreateAdvancedOrder(order)
+		resp, err := c.cbClient.CreateAdvancedOrder(order)
 		if err != nil {
 			return err
 		}
@@ -107,8 +132,8 @@ func createOrder(cbClient *coinbase.Client, currency string) error {
 	return nil
 }
 
-func getRefundAddress(cbClient *coinbase.Client, currency string) (string, error) {
-	addresses, err := cbClient.GetAddresses(baseCurrency)
+func (c *Converter) getRefundAddress(currency string) (string, error) {
+	addresses, err := c.cbClient.GetAddresses(baseCurrency)
 	if err != nil {
 		return "", err
 	}
@@ -117,7 +142,7 @@ func getRefundAddress(cbClient *coinbase.Client, currency string) (string, error
 	if len(*addresses) > 0 {
 		refundAddress = (*addresses)[0].Address
 	} else {
-		address, err := cbClient.CreateAddress(baseCurrency)
+		address, err := c.cbClient.CreateAddress(baseCurrency)
 		if err != nil {
 			return "", err
 		}

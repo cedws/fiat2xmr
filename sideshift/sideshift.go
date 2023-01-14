@@ -93,8 +93,8 @@ type Client struct {
 	apiSecret string
 }
 
-func NewClient(apiSecret string) Client {
-	return Client{&http.Client{}, apiSecret}
+func NewClient(apiSecret string) *Client {
+	return &Client{&http.Client{}, apiSecret}
 }
 
 func (c *Client) CanShift() (bool, error) {
@@ -115,10 +115,44 @@ func (c *Client) GetPermissions() (*PermissionsResponse, error) {
 	return res, nil
 }
 
-func (c *Client) CreateVariableShift(shift VariableShiftRequest) (*VariableShiftResponse, error) {
-	res, err := request[VariableShiftRequest, VariableShiftResponse](c, http.MethodPost, "/shifts/variable", &shift)
+func (c *Client) GetShift(shiftID string) (*ShiftResponse, error) {
+	path, err := url.JoinPath("/shifts", url.PathEscape(shiftID))
 	if err != nil {
-		return nil, fmt.Errorf("while creating variable shift: %w", err)
+		panic(err)
+	}
+
+	res, err := request[struct{}, ShiftResponse](c, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("while getting shift: %w", err)
+	}
+
+	return res, nil
+}
+
+func (c *Client) GetPair(base, settle string) (*PairResponse, error) {
+	path := fmt.Sprintf("/pair/%v/%v", url.PathEscape(base), url.PathEscape(settle))
+
+	res, err := request[struct{}, PairResponse](c, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("while getting pair: %w", err)
+	}
+
+	return res, nil
+}
+
+func (c *Client) CreateFixedShift(shift FixedShiftRequest) (*FixedShiftResponse, error) {
+	res, err := request[FixedShiftRequest, FixedShiftResponse](c, http.MethodPost, "/shifts/fixed", &shift)
+	if err != nil {
+		return nil, fmt.Errorf("while creating fixed shift: %w", err)
+	}
+
+	return res, nil
+}
+
+func (c *Client) CreateQuote(quote QuoteRequest) (*QuoteResponse, error) {
+	res, err := request[QuoteRequest, QuoteResponse](c, http.MethodPost, "/quotes", &quote)
+	if err != nil {
+		return nil, fmt.Errorf("while creating quote: %w", err)
 	}
 
 	return res, nil
@@ -149,18 +183,4 @@ Loop:
 	}
 
 	return shift, nil
-}
-
-func (c *Client) GetShift(shiftID string) (*ShiftResponse, error) {
-	path, err := url.JoinPath("/shifts", url.PathEscape(shiftID))
-	if err != nil {
-		panic(err)
-	}
-
-	res, err := request[struct{}, ShiftResponse](c, http.MethodGet, path, nil)
-	if err != nil {
-		return nil, fmt.Errorf("while getting shift: %w", err)
-	}
-
-	return res, nil
 }

@@ -131,7 +131,7 @@ type DepositResponse struct {
 	PayoutAt string `json:"payout_at"`
 }
 
-type CreateAdvancedOrderResponse struct {
+type AdvancedOrderResponse struct {
 	Success         bool   `json:"success"`
 	FailureReason   string `json:"failure_reason"`
 	OrderID         string `json:"order_id"`
@@ -153,29 +153,5 @@ type CreateAdvancedOrderResponse struct {
 			QuoteSize string `json:"quote_size"`
 			BaseSize  string `json:"base_size"`
 		} `json:"market_market_ioc"`
-		LimitLimitGtc struct {
-			BaseSize   string `json:"base_size"`
-			LimitPrice string `json:"limit_price"`
-			PostOnly   bool   `json:"post_only"`
-		} `json:"limit_limit_gtc"`
-		LimitLimitGtd struct {
-			BaseSize   string    `json:"base_size"`
-			LimitPrice string    `json:"limit_price"`
-			EndTime    time.Time `json:"end_time"`
-			PostOnly   bool      `json:"post_only"`
-		} `json:"limit_limit_gtd"`
-		StopLimitStopLimitGtc struct {
-			BaseSize      string `json:"base_size"`
-			LimitPrice    string `json:"limit_price"`
-			StopPrice     string `json:"stop_price"`
-			StopDirection string `json:"stop_direction"`
-		} `json:"stop_limit_stop_limit_gtc"`
-		StopLimitStopLimitGtd struct {
-			BaseSize      float64   `json:"base_size"`
-			LimitPrice    string    `json:"limit_price"`
-			StopPrice     string    `json:"stop_price"`
-			EndTime       time.Time `json:"end_time"`
-			StopDirection string    `json:"stop_direction"`
-		} `json:"stop_limit_stop_limit_gtd"`
 	} `json:"order_configuration"`
 }
