@@ -145,6 +145,16 @@ func (c *Client) GetAddresses(account string) (*AddressesResponse, error) {
 	return result, nil
 }
 
+func (c *Client) GetProduct(product string) (*ProductResponse, error) {
+	path := fmt.Sprintf("/brokerage/products/%v", url.PathEscape(product))
+
+	result, err := requestV3[struct{}, ProductResponse](c, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("while getting product: %w", err)
+	}
+	return result, nil
+}
+
 func (c *Client) CreateAddress(account string) (*AddressResponse, error) {
 	path := fmt.Sprintf("/accounts/%v/addresses", url.PathEscape(account))
 

@@ -1,9 +1,9 @@
 package fiat2xmr
 
 import (
-	"errors"
 	"fmt"
 	"log"
+	"math"
 
 	"github.com/cedws/fiat2xmr/coinbase"
 	"github.com/cedws/fiat2xmr/sideshift"
@@ -34,10 +34,6 @@ func NewConverter(ssClient *sideshift.Client, cbClient *coinbase.Client) *Conver
 
 func (c *Converter) Convert(opts Opts) {
 	if err := c.createOrder(baseCurrency); err != nil {
-		log.Fatal(err)
-	}
-	// TODO: somehow check if we have enough to shift before creating an order
-	if err := c.assertShiftMinimum(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -87,8 +83,18 @@ func (c *Converter) Convert(opts Opts) {
 	log.Println(shiftResult)
 }
 
-func (c *Converter) assertShiftMinimum() error {
-	baseAccount, err := c.cbClient.GetAccountByCode(baseCurrency)
+func (c *Converter) getBalance(currency string) (float64, error) {
+	account, err := c.cbClient.GetAccountByCode(baseCurrency)
+	if err != nil {
+		return 0, err
+	}
+
+	return account.Balance.Amount, nil
+}
+
+func (c *Converter) createOrder(currency string) error {
+	productID := fmt.Sprintf("%v-%v", currency, fiatCurrency)
+	product, err := c.cbClient.GetProduct(productID)
 	if err != nil {
 		return err
 	}
@@ -98,35 +104,48 @@ func (c *Converter) assertShiftMinimum() error {
 		return err
 	}
 
-	if pair.Min > baseAccount.Balance.Amount {
-		log.Fatalf("%v balance too low to initiate shift (minimum %v)", baseCurrency, pair.Min)
-	}
-
-	return nil
-}
-
-func (c *Converter) createOrder(currency string) error {
-	fiatAccount, err := c.cbClient.GetAccountByCode(fiatCurrency)
+	fiatBalance, err := c.getBalance(fiatCurrency)
 	if err != nil {
 		return err
 	}
 
-	if fiatAccount.Balance.Amount > 0 {
+	// quote means fiat here thanks to coinbase inverting things
+	if fiatBalance > 0 && fiatBalance > product.QuoteMinSize {
+		// clamp amount to maximum order size for the millionaires
+		orderAmountFiat := math.Min(fiatBalance, product.QuoteMaxSize)
+
+		baseBalance, err := c.getBalance(baseCurrency)
+		if err != nil {
+			return err
+		}
+		// estimate if we'll have enough to shift if we place a market order
+		if baseBalance+(product.Price/orderAmountFiat) < pair.Min {
+			return fmt.Errorf("%v balance too low to initiate shift (minimum %v)", baseCurrency, pair.Min)
+		}
+
 		order := coinbase.AdvancedOrderRequest{
 			ClientOrderID: uuid.New().String(),
-			ProductID:     fmt.Sprintf("%v-%v", currency, fiatCurrency),
+			ProductID:     productID,
 			Side:          "BUY",
 		}
-		order.OrderConfiguration.MarketMarketIOC.QuoteSize = fiatAccount.Balance.Amount
+		order.OrderConfiguration.MarketMarketIOC.QuoteSize = orderAmountFiat
 
 		resp, err := c.cbClient.CreateAdvancedOrder(order)
 		if err != nil {
 			return err
 		}
-
 		if !resp.Success {
-			return errors.New(resp.ErrorResponse.Message)
+			return fmt.Errorf("advanced order failed: %v", resp.ErrorResponse.Message)
 		}
+	}
+
+	baseBalance, err := c.getBalance(baseCurrency)
+	if err != nil {
+		return err
+	}
+	// additional check before we start the shift just in case the price moved since the pre-flight check
+	if pair.Min > baseBalance {
+		return fmt.Errorf("%v balance too low to initiate shift (minimum %v)", baseCurrency, pair.Min)
 	}
 
 	return nil

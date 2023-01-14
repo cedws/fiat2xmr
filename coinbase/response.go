@@ -15,6 +15,34 @@ type AddressResponse struct {
 	ResourcePath string    `json:"resource_path"`
 }
 
+type ProductResponse struct {
+	ProductID                 string  `json:"product_id,omitempty"`
+	Price                     float64 `json:"price,omitempty,string"`
+	PricePercentageChange24H  string  `json:"price_percentage_change_24h,omitempty"`
+	Volume24H                 string  `json:"volume_24h,omitempty"`
+	VolumePercentageChange24H string  `json:"volume_percentage_change_24h,omitempty"`
+	BaseIncrement             float64 `json:"base_increment,omitempty,string"`
+	QuoteIncrement            float64 `json:"quote_increment,omitempty,string"`
+	QuoteMinSize              float64 `json:"quote_min_size,omitempty,string"`
+	QuoteMaxSize              float64 `json:"quote_max_size,omitempty,string"`
+	BaseMinSize               float64 `json:"base_min_size,omitempty,string"`
+	BaseMaxSize               float64 `json:"base_max_size,omitempty,string"`
+	BaseName                  string  `json:"base_name,omitempty"`
+	QuoteName                 string  `json:"quote_name,omitempty"`
+	Watched                   bool    `json:"watched,omitempty"`
+	IsDisabled                bool    `json:"is_disabled,omitempty"`
+	New                       bool    `json:"new,omitempty"`
+	Status                    string  `json:"status,omitempty"`
+	CancelOnly                bool    `json:"cancel_only,omitempty"`
+	LimitOnly                 bool    `json:"limit_only,omitempty"`
+	PostOnly                  bool    `json:"post_only,omitempty"`
+	TradingDisabled           bool    `json:"trading_disabled,omitempty"`
+	AuctionMode               bool    `json:"auction_mode,omitempty"`
+	ProductType               string  `json:"product_type,omitempty"`
+	QuoteCurrencyID           string  `json:"quote_currency_id,omitempty"`
+	BaseCurrencyID            string  `json:"base_currency_id,omitempty"`
+}
+
 type AccountsResponse []AccountResponse
 
 type AccountResponse struct {
